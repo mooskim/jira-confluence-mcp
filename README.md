@@ -11,7 +11,13 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
       "command": "uvx",
       "args": [
         "jira-confluence-mcp"
-      ]
+      ],
+      "env": {
+        "CONFLUENCE_BASE_URL": "",
+        "CONFLUENCE_PERSONAL_ACCESS_TOKEN": "",
+        "JIRA_BASE_URL": "",
+        "JIRA_PERSONAL_ACCESS_TOKEN": ""
+      }
     }
   }
 }

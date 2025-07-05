@@ -157,5 +157,9 @@ def get_content_confluence(page_id: str) -> str:
     return re.sub(pattern, repl, content_body, flags=re.DOTALL)
 
 
-if __name__ == "__main__":
+def main():
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()
