@@ -1,3 +1,6 @@
+import base64
+import json
+import mimetypes
 import os
 import re
 from typing import Any
@@ -96,7 +99,43 @@ def get_content(page_id: str) -> dict[str, Any]:
     return response.json()
 
 
-def get_attachment_content(page_id: str, filename: str) -> bytes | None:
+@mcp.tool()
+def get_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
+    """
+    Retrieves the list of attachments from a specific Confluence page.
+
+    When to Use:
+        Use this function to obtain metadata for all attachments associated with a particular Confluence page,
+        identified by its page ID.
+
+    Args:
+        page_id (str): The unique identifier of the Confluence page whose attachments you want to list.
+
+    Returns:
+        list[dict[str, Any]]: A list of attachment objects for the given page. Each object contains detailed metadata, including (but not limited to):
+
+            - 'id' (str): The unique identifier for the attachment.
+            - 'type' (str): The content type (typically 'attachment').
+            - 'status' (str): The attachment's status (e.g., 'current').
+            - 'title' (str): The filename or title of the attachment.
+            - 'metadata' (dict): Metadata about the attachment, which contains:
+                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
+                - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
+                - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
+                - '_expandable' (dict): Expandable fields (for internal Confluence use).
+            - 'extensions' (dict): Additional metadata:
+                - 'mediaType' (str): MIME type.
+                - 'fileSize' (int): File size in bytes.
+                - 'comment' (str): Same as above.
+            - '_links' (dict): Various URLs, including:
+                - 'webui' (str): Web UI preview URL.
+                - 'download' (str): Direct download URL for the file.
+                - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
+                - 'self' (str): API detail URL for the attachment.
+            - '_expandable' (dict): More expandable Confluence fields (for advanced use).
+
+        The returned objects may include additional keys depending on the Confluence API.
+    """
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/rest/api/content/{page_id}/child/attachment"
     personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
@@ -106,13 +145,24 @@ def get_attachment_content(page_id: str, filename: str) -> bytes | None:
     }
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    attachments = response.json()["results"]
+    response_json = response.json()
+    return response_json["results"]
+
+
+def get_attachment_content(page_id: str, filename: str) -> bytes | None:
+    attachments = get_attachments_confluence(page_id)
+    base_url = os.environ["CONFLUENCE_BASE_URL"]
+    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
     for attachment in attachments:
         if attachment["title"] == filename:
-            attachment_url = base_url + attachment["_links"]["download"]
-            attachment_response = requests.get(attachment_url, headers=headers)
-            attachment_response.raise_for_status()
-            return attachment_response.content
+            url = base_url + attachment["_links"]["download"]
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.content
 
 
 @mcp.tool()
@@ -155,6 +205,61 @@ def get_content_confluence(page_id: str) -> str:
     content = get_content(page_id)
     content_body = content["body"]["storage"]["value"]
     return re.sub(pattern, repl, content_body, flags=re.DOTALL)
+
+
+@mcp.tool()
+def describe_image_confluence(page_id: str, filename: str, prompt: str) -> dict[str, Any]:
+    """
+    Generates a description of an image attachment from a specific Confluence page using an AI language model.
+
+    When to Use:
+        Use this function when you need an intelligent summary or analysis of a particular image (such as a screenshot, diagram, or photo)
+        stored as an attachment on a Confluence page. The AI's response can be tailored by providing a custom prompt.
+
+    Args:
+        page_id (str): The unique identifier of the Confluence page that contains the image attachment.
+        filename (str): The filename of the attached image to be described (e.g., "diagram.png").
+        prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
+
+    Returns:
+        dict[str, Any]: A dictionary containing the AI-generated response, which may include:
+            - A summary or description of the image's contents
+            - Analysis or interpretation based on the provided prompt
+            - Any relevant insights or extracted information depending on the image type and user prompt
+
+        The returned dictionary will be the direct output from the AI language model, structured according to the response format
+        of the underlying Azure OpenAI API.
+    """
+    url = f"{os.environ["AZURE_OPENAI_ENDPOINT"]}/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
+    headers = {
+        "api-key": os.environ["AZURE_OPENAI_API_KEY"],
+        "Content-Type": "application/json",
+    }
+    mime_type, _ = mimetypes.guess_type(filename)
+    if mime_type is None:
+        mime_type = "application/octet-stream"
+    content = get_attachment_content(page_id, filename)
+    content_b64_utf8 = base64.b64encode(content).decode("utf-8")
+    data = {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{content_b64_utf8}"
+                        },
+                        "type": "image_url",
+                    },
+                    {"text": prompt, "type": "text"},
+                ],
+                "role": "user",
+            }
+        ]
+    }
+    data_str = json.dumps(data)
+    response = requests.post(url, data_str, headers=headers)
+    response.raise_for_status()
+    return response.json()
 
 
 def main():
