@@ -12,51 +12,39 @@ mcp = fastmcp.FastMCP("jira-confluence-mcp")
 
 
 @mcp.tool()
-def get_issue_jira(issue_id_or_key: str) -> dict[str, Any]:
+def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
     """
-    Retrieves detailed information about a specific Jira issue using its ID or key.
+    Retrieves detailed information about a specific Jira issue using its issue ID or key.
 
     When to Use:
-        Use this function to obtain information about a Jira issue by specifying its issue ID or key (e.g., "PROJ-123").
+        Use this function to obtain comprehensive and structured information about a Jira issue by specifying its issue ID or key
+        (e.g., "PROJ-123"). This includes metadata, status, description, attachments, comments, and more.
 
     Args:
-        issue_id_or_key (str): The issue ID or key of the Jira issue (e.g., "PROJ-123").
+        issue_id_or_key (str): The issue ID or key of the Jira issue to retrieve (e.g., "PROJ-123").
 
     Returns:
-        dict[str, Any]: A dictionary containing comprehensive information about the Jira issue.
+        dict[str, Any]: A dictionary containing extensive information about the Jira issue, including but not limited to:
+            - 'expand' (str): Comma-separated fields that can be expanded with further API calls.
+            - 'fields' (dict): A dictionary containing major fields:
+                - 'assignee' (dict): Details of the issue assignee (if assigned).
+                - 'attachment' (list): List of attached files and their metadata.
+                - 'comment' (dict): Metadata for comments, with a list of comment details (author, body, created/updated time, etc.).
+                - 'components' (list): List of components related to the issue.
+                - 'created' (str): The creation datetime (ISO 8601).
+                - 'description' (str): A detailed description, may contain wiki markup or HTML.
+                - 'issuetype' (dict): Issue type information (name, description, icons, etc.).
+                - 'labels' (list): List of any labels on the issue.
+                - 'reporter' (dict): Details of the issue reporter.
+                - 'status' (dict): Current workflow status (name, description, etc.).
+                - 'summary' (str): A short title or summary of the issue.
+                - 'updated' (str): Last updated datetime.
+            - 'id' (str): The unique identifier of the issue.
+            - 'key' (str): The key of the issue (e.g., "PROJ-123").
+            - Other top-level metadata, such as 'self' (REST API URL for this issue), may be present.
 
-        The returned dictionary includes (but is not limited to) the following keys:
-
-        - 'expand' (str): Comma-separated list of fields that can be expanded for more details.
-        - 'fields' (dict[str, Any]): A dictionary of issue fields and their values. Important fields include:
-            - 'assignee' (dict or None): The user assigned to the issue.
-            - 'attachment' (list[dict]): List of attachments, each containing:
-                - 'author' (dict): Info about the user who added the attachment.
-                - 'content' (str): Direct download URL.
-                - 'created' (str): Date/time the attachment was added.
-                - 'filename' (str): Name of the file.
-                - 'id' (str): The attachment ID.
-                - 'mimeType' (str): MIME type.
-                - 'size' (int): Attachment size in bytes.
-            - 'comment' (dict): Comments meta and a list of comment objects. Each comment provides:
-                - 'author' (dict): Author info.
-                - 'body' (str): Comment text.
-                - 'created' (str): Creation datetime.
-                - 'id' (str): Comment ID.
-                - 'updated' (str): Last update datetime.
-            - 'components' (list[dict]): List of components assigned to this issue.
-            - 'created' (str): Creation date/time (ISO 8601).
-            - 'description' (str): The detailed description of the issue (may contain Jira wiki markup or HTML).
-            - 'issuetype' (dict): Information about the issue type (e.g., name, iconUrl, etc).
-            - 'labels' (list[str]): List of labels on this issue.
-            - 'reporter' (dict): The user who reported the issue.
-            - 'status' (dict): The current status of the issue (e.g., name, id, category).
-            - 'summary' (str): The summary or title of the issue.
-            - 'updated' (str): Last update date/time (ISO 8601).
-        - 'id' (str): The unique identifier of the issue.
-        - 'key' (str): The issue key (e.g., "PROJ-123").
-        - 'self' (str): The REST API URL for this issue resource.
-        - Additional metadata keys (e.g., 'maxResults', 'total', 'startAt') may be present for paged fields like comments.
+        The returned dictionary structure matches what is returned by Jira's REST API for the selected fields, and will contain
+        any relevant or additional keys if available in the response. Paging and meta fields are included for comment lists.
     """
     base_url = os.environ["JIRA_BASE_URL"]
     url = f"{base_url}/rest/api/2/issue/{issue_id_or_key}"
@@ -85,24 +73,10 @@ def get_issue_jira(issue_id_or_key: str) -> dict[str, Any]:
     return response.json()
 
 
-def get_content(page_id: str) -> dict[str, Any]:
-    base_url = os.environ["CONFLUENCE_BASE_URL"]
-    url = f"{base_url}/rest/api/content/{page_id}"
-    params = {"expand": "body.storage"}
-    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
-    headers = {
-        "Authorization": f"Bearer {personal_access_token}",
-        "Content-Type": "application/json",
-    }
-    response = requests.get(url, params, headers=headers)
-    response.raise_for_status()
-    return response.json()
-
-
 @mcp.tool()
-def get_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
+def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
     """
-    Retrieves the list of attachments from a specific Confluence page.
+    Lists all attachments from a specified Confluence page.
 
     When to Use:
         Use this function to obtain metadata for all attachments associated with a particular Confluence page,
@@ -113,26 +87,25 @@ def get_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
 
     Returns:
         list[dict[str, Any]]: A list of attachment objects for the given page. Each object contains detailed metadata, including (but not limited to):
-
+            - '_expandable' (dict): More expandable Confluence fields (for advanced use).
+            - '_links' (dict): Various URLs, including:
+                - 'download' (str): Direct download URL for the file.
+                - 'self' (str): API detail URL for the attachment.
+                - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
+                - 'webui' (str): Web UI preview URL.
+            - 'extensions' (dict): Additional metadata:
+                - 'comment' (str): Same as above.
+                - 'fileSize' (int): File size in bytes.
+                - 'mediaType' (str): MIME type.
             - 'id' (str): The unique identifier for the attachment.
-            - 'type' (str): The content type (typically 'attachment').
+            - 'metadata' (dict): Metadata about the attachment, which contains:
+                - '_expandable' (dict): Expandable fields (for internal Confluence use).
+                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
+                - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
+                - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
             - 'status' (str): The attachment's status (e.g., 'current').
             - 'title' (str): The filename or title of the attachment.
-            - 'metadata' (dict): Metadata about the attachment, which contains:
-                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
-                - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
-                - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
-                - '_expandable' (dict): Expandable fields (for internal Confluence use).
-            - 'extensions' (dict): Additional metadata:
-                - 'mediaType' (str): MIME type.
-                - 'fileSize' (int): File size in bytes.
-                - 'comment' (str): Same as above.
-            - '_links' (dict): Various URLs, including:
-                - 'webui' (str): Web UI preview URL.
-                - 'download' (str): Direct download URL for the file.
-                - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
-                - 'self' (str): API detail URL for the attachment.
-            - '_expandable' (dict): More expandable Confluence fields (for advanced use).
+            - 'type' (str): The content type (typically 'attachment').
 
         The returned objects may include additional keys depending on the Confluence API.
     """
@@ -149,8 +122,8 @@ def get_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
     return response_json["results"]
 
 
-def get_attachment_content(page_id: str, filename: str) -> bytes | None:
-    attachments = get_attachments_confluence(page_id)
+def get_attachment_content_confluence(page_id: str, filename: str) -> bytes | None:
+    attachments = list_attachments_confluence(page_id)
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
     headers = {
@@ -165,8 +138,22 @@ def get_attachment_content(page_id: str, filename: str) -> bytes | None:
             return response.content
 
 
+def get_page_content_confluence(page_id: str) -> dict[str, Any]:
+    base_url = os.environ["CONFLUENCE_BASE_URL"]
+    url = f"{base_url}/rest/api/content/{page_id}"
+    params = {"expand": "body.storage"}
+    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(url, params, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 @mcp.tool()
-def get_content_confluence(page_id: str) -> str:
+def get_page_content_with_gliffy_confluence(page_id: str) -> str:
     """
     Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
 
@@ -182,7 +169,7 @@ def get_content_confluence(page_id: str) -> str:
             - If the page contains Gliffy diagrams (embedded as structured macros), each will be detected via regex,
               and the diagram file's content will be extracted from the Confluence attachment.
             - Gliffy diagram macros are replaced inline with <ac:structured-macro ac:name="code"> blocks,
-              presenting the binary or JSON content (as CDATA).
+              presenting the attachment content as CDATA.
             - The rest of the page's HTML markup, including headings, text, expand blocks, lists, links, and Confluence macros
               (such as tables of contents, page links, images, etc.), is preserved.
             - Non-Gliffy attachments, images, and meta structures remain unaffected, except as present in the original page content.
@@ -195,25 +182,39 @@ def get_content_confluence(page_id: str) -> str:
             - Custom macros that reference Confluence/Jira/attachments
             - Embedded diagrams or code blocks
     """
-    pattern = r'<ac:structured-macro[^>]+ac:name="gliffy"[^>]+>.*?<ac:parameter ac:name="name">(.*?)</ac:parameter>.*?</ac:structured-macro>'
+    pattern = (
+        r'<ac:structured-macro[^>]+ac:name="gliffy"[^>]+>'
+        r'.*?<ac:parameter ac:name="name">(.*?)</ac:parameter>.*?'
+        r"</ac:structured-macro>"
+    )
 
     def repl(match: re.Match) -> str:
         filename = match.group(1)
-        attachment_content = get_attachment_content(page_id, filename)
-        return f'<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">json</ac:parameter><ac:plain-text-body><![CDATA[{attachment_content}]]></ac:plain-text-body></ac:structured-macro>'
+        attachment_content = get_attachment_content_confluence(page_id, filename)
+        if not attachment_content:
+            return ""
+        attachment_content_utf8 = attachment_content.decode("utf-8")
+        return (
+            '<ac:structured-macro ac:name="code">'
+            '<ac:parameter ac:name="language">json</ac:parameter>'
+            f"<ac:plain-text-body><![CDATA[{attachment_content_utf8}]]></ac:plain-text-body>"
+            "</ac:structured-macro>"
+        )
 
-    content = get_content(page_id)
+    content = get_page_content_confluence(page_id)
     content_body = content["body"]["storage"]["value"]
     return re.sub(pattern, repl, content_body, flags=re.DOTALL)
 
 
 @mcp.tool()
-def describe_image_confluence(page_id: str, filename: str, prompt: str) -> dict[str, Any]:
+def describe_image_confluence(
+    page_id: str, filename: str, prompt: str
+) -> dict[str, Any] | None:
     """
     Generates a description of an image attachment from a specific Confluence page using an AI language model.
 
     When to Use:
-        Use this function when you need an intelligent summary or analysis of a particular image (such as a screenshot, diagram, or photo)
+        Use this function to obtain an intelligent summary or analysis of a particular image (such as a screenshot, diagram, or photo)
         stored as an attachment on a Confluence page. The AI's response can be tailored by providing a custom prompt.
 
     Args:
@@ -230,16 +231,19 @@ def describe_image_confluence(page_id: str, filename: str, prompt: str) -> dict[
         The returned dictionary will be the direct output from the AI language model, structured according to the response format
         of the underlying Azure OpenAI API.
     """
-    url = f"{os.environ["AZURE_OPENAI_ENDPOINT"]}/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
-    headers = {
-        "api-key": os.environ["AZURE_OPENAI_API_KEY"],
-        "Content-Type": "application/json",
-    }
+    url = (
+        f"{os.environ["AZURE_OPENAI_ENDPOINT"]}"
+        f"/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}"
+        f"/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
+    )
     mime_type, _ = mimetypes.guess_type(filename)
     if mime_type is None:
         mime_type = "application/octet-stream"
-    content = get_attachment_content(page_id, filename)
-    content_b64_utf8 = base64.b64encode(content).decode("utf-8")
+    content = get_attachment_content_confluence(page_id, filename)
+    if not content:
+        return None
+    content_b64 = base64.b64encode(content)
+    content_b64_utf8 = content_b64.decode("utf-8")
     data = {
         "messages": [
             {
@@ -257,6 +261,10 @@ def describe_image_confluence(page_id: str, filename: str, prompt: str) -> dict[
         ]
     }
     data_str = json.dumps(data)
+    headers = {
+        "api-key": os.environ["AZURE_OPENAI_API_KEY"],
+        "Content-Type": "application/json",
+    }
     response = requests.post(url, data_str, headers=headers)
     response.raise_for_status()
     return response.json()
