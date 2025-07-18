@@ -74,6 +74,40 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def get_page_id_confluence(space_key: str, title: str) -> str:
+    """
+    Retrieves the unique Confluence page ID based on the space key and page title.
+
+    When to Use:
+        Use this function to obtain the internal unique identifier (page ID) of a specific Confluence page,
+        by specifying its space key and page title. This ID can be used for subsequent operations such as
+        listing attachments, retrieving page content, or updating the page.
+
+    Args:
+        space_key (str): The key of the Confluence space where the page is located (e.g., "ENG").
+        title (str): The title of the Confluence page as shown in the UI (e.g., "Design Overview").
+
+    Returns:
+        str: The unique identifier (page ID) assigned to the specified Confluence page. For example, "123456".
+
+        The returned string represents the page's internal ID in the Confluence instance and can be used
+        as input to other functions that require a page identifier.
+    """
+    base_url = os.environ["CONFLUENCE_BASE_URL"]
+    url = f"{base_url}/rest/api/content"
+    params = {"spaceKey": space_key, "title": title}
+    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(url, params, headers=headers)
+    response.raise_for_status()
+    response_json = response.json()
+    return response_json["results"][0]["id"]
+
+
+@mcp.tool()
 def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
     """
     Lists all attachments from a specified Confluence page.
@@ -123,19 +157,16 @@ def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
 
 
 def get_attachment_content_confluence(page_id: str, filename: str) -> bytes | None:
-    attachments = list_attachments_confluence(page_id)
     base_url = os.environ["CONFLUENCE_BASE_URL"]
+    url = f"{base_url}/download/attachments/{page_id}/{filename}"
     personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
     headers = {
         "Authorization": f"Bearer {personal_access_token}",
         "Content-Type": "application/json",
     }
-    for attachment in attachments:
-        if attachment["title"] == filename:
-            url = base_url + attachment["_links"]["download"]
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-            return response.content
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.content
 
 
 def get_page_content_confluence(page_id: str) -> dict[str, Any]:

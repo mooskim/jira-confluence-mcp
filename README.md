@@ -69,6 +69,29 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 
 ```
 @mcp.tool()
+def get_page_id_confluence(space_key: str, title: str) -> str:
+    """
+    Retrieves the unique Confluence page ID based on the space key and page title.
+
+    When to Use:
+        Use this function to obtain the internal unique identifier (page ID) of a specific Confluence page,
+        by specifying its space key and page title. This ID can be used for subsequent operations such as
+        listing attachments, retrieving page content, or updating the page.
+
+    Args:
+        space_key (str): The key of the Confluence space where the page is located (e.g., "ENG").
+        title (str): The title of the Confluence page as shown in the UI (e.g., "Design Overview").
+
+    Returns:
+        str: The unique identifier (page ID) assigned to the specified Confluence page. For example, "123456".
+
+        The returned string represents the page's internal ID in the Confluence instance and can be used
+        as input to other functions that require a page identifier.
+    """
+```
+
+```
+@mcp.tool()
 def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
     """
     Lists all attachments from a specified Confluence page.
