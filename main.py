@@ -73,6 +73,78 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
     return response.json()
 
 
+def get_attachment_content_jira(url: str) -> bytes | None:
+    personal_access_token = os.environ["JIRA_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.content
+
+
+@mcp.tool()
+def describe_image_jira(url: str, prompt: str) -> dict[str, Any] | None:
+    """
+    Generates a description of an image attachment from a Jira issue using an AI language model.
+
+    When to Use:
+        Use this function to obtain an intelligent summary or analysis of a specific image attachment from Jira (such as a screenshot, diagram, or photo)
+        by providing the direct download URL of the image and a custom prompt to guide the AI's description or analysis.
+
+    Args:
+        url (str): The direct download URL for the image attachment stored in Jira.
+        prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
+
+    Returns:
+        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
+            - A summary or description of the image's contents
+            - Analysis or interpretation based on the provided prompt
+            - Any relevant insights or extracted information depending on the image type and user prompt
+
+        The returned dictionary will be the direct output from the AI language model, structured according to the response format
+        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
+    """
+    openai_url = (
+        f"{os.environ["AZURE_OPENAI_ENDPOINT"]}"
+        f"/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}"
+        f"/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
+    )
+    mime_type, _ = mimetypes.guess_type(url)
+    if mime_type is None:
+        mime_type = "application/octet-stream"
+    content = get_attachment_content_jira(url)
+    if not content:
+        return None
+    content_b64 = base64.b64encode(content)
+    content_b64_utf8 = content_b64.decode("utf-8")
+    data = {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{content_b64_utf8}"
+                        },
+                        "type": "image_url",
+                    },
+                    {"text": prompt, "type": "text"},
+                ],
+                "role": "user",
+            }
+        ]
+    }
+    data_str = json.dumps(data)
+    headers = {
+        "api-key": os.environ["AZURE_OPENAI_API_KEY"],
+        "Content-Type": "application/json",
+    }
+    response = requests.post(openai_url, data_str, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 @mcp.tool()
 def get_page_id_confluence(space_key: str, title: str) -> str:
     """

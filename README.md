@@ -68,6 +68,29 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 ```
 
 ```
+    """
+    Generates a description of an image attachment from a Jira issue using an AI language model.
+
+    When to Use:
+        Use this function to obtain an intelligent summary or analysis of a specific image attachment from Jira (such as a screenshot, diagram, or photo)
+        by providing the direct download URL of the image and a custom prompt to guide the AI's description or analysis.
+
+    Args:
+        url (str): The direct download URL for the image attachment stored in Jira.
+        prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
+
+    Returns:
+        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
+            - A summary or description of the image's contents
+            - Analysis or interpretation based on the provided prompt
+            - Any relevant insights or extracted information depending on the image type and user prompt
+
+        The returned dictionary will be the direct output from the AI language model, structured according to the response format
+        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
+    """
+```
+
+```
 @mcp.tool()
 def get_page_id_confluence(space_key: str, title: str) -> str:
     """
