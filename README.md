@@ -29,10 +29,8 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
 
 ## Tools
 
-```
-@mcp.tool()
-def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
-    """
+### get_issue_content_jira
+
     Retrieves detailed information about a specific Jira issue using its issue ID or key.
 
     When to Use:
@@ -64,11 +62,9 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 
         The returned dictionary structure matches what is returned by Jira's REST API for the selected fields, and will contain
         any relevant or additional keys if available in the response. Paging and meta fields are included for comment lists.
-    """
-```
 
-```
-    """
+### describe_image_jira
+
     Generates a description of an image attachment from a Jira issue using an AI language model.
 
     When to Use:
@@ -77,6 +73,7 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 
     Args:
         url (str): The direct download URL for the image attachment stored in Jira.
+        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
         prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
 
     Returns:
@@ -87,13 +84,9 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 
         The returned dictionary will be the direct output from the AI language model, structured according to the response format
         of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
-    """
-```
 
-```
-@mcp.tool()
-def get_page_id_confluence(space_key: str, title: str) -> str:
-    """
+### get_page_id_confluence
+
     Retrieves the unique Confluence page ID based on the space key and page title.
 
     When to Use:
@@ -110,13 +103,9 @@ def get_page_id_confluence(space_key: str, title: str) -> str:
 
         The returned string represents the page's internal ID in the Confluence instance and can be used
         as input to other functions that require a page identifier.
-    """
-```
 
-```
-@mcp.tool()
-def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
-    """
+### list_attachments_confluence
+
     Lists all attachments from a specified Confluence page.
 
     When to Use:
@@ -135,27 +124,23 @@ def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
                 - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
                 - 'webui' (str): Web UI preview URL.
             - 'extensions' (dict): Additional metadata:
-                - 'comment' (str): Same as above.
+                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
                 - 'fileSize' (int): File size in bytes.
                 - 'mediaType' (str): MIME type.
             - 'id' (str): The unique identifier for the attachment.
             - 'metadata' (dict): Metadata about the attachment, which contains:
                 - '_expandable' (dict): Expandable fields (for internal Confluence use).
-                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
+                - 'comment' (str): Attachment description.
                 - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
                 - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
-            - 'status' (str): The attachment's status (e.g., 'current').
-            - 'title' (str): The filename or title of the attachment.
-            - 'type' (str): The content type (typically 'attachment').
+                - 'status' (str): The attachment's status (e.g., 'current').
+                - 'title' (str): The filename or title of the attachment.
+                - 'type' (str): The content type (typically 'attachment').
 
         The returned objects may include additional keys depending on the Confluence API.
-    """
-```
 
-```
-@mcp.tool()
-def get_page_content_with_gliffy_confluence(page_id: str) -> str:
-    """
+### get_page_content_with_gliffy_confluence
+
     Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
 
     When to Use:
@@ -166,7 +151,7 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
         page_id (str): The unique identifier of the Confluence page (e.g., "123456").
 
     Returns:
-        str: A string containing the page's processed HTML content with the following characteristics:
+        dict[str, Any]: A dictionary containing the page's processed HTML content with the following characteristics:
             - If the page contains Gliffy diagrams (embedded as structured macros), each will be detected via regex,
               and the diagram file's content will be extracted from the Confluence attachment.
             - Gliffy diagram macros are replaced inline with <ac:structured-macro ac:name="code"> blocks,
@@ -175,22 +160,11 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
               (such as tables of contents, page links, images, etc.), is preserved.
             - Non-Gliffy attachments, images, and meta structures remain unaffected, except as present in the original page content.
 
-        The returned HTML content may contain, but is not limited to, the following structures:
-            - Headings (e.g., <h1>, <h2>)
-            - Lists and nested lists (<ul>, <li>)
-            - Tables (class="relative-table wrapped")
-            - Confluence macros (expand, toc, jira-link, image, etc.)
-            - Custom macros that reference Confluence/Jira/attachments
-            - Embedded diagrams or code blocks
-    """
-```
+        The returned dictionary structure contains all page content and data in the same format as the original Confluence page,
+        except for the processing of Gliffy diagram macros.
 
-```
-@mcp.tool()
-def describe_image_confluence(
-    page_id: str, filename: str, prompt: str
-) -> dict[str, Any] | None:
-    """
+### describe_image_confluence
+
     Generates a description of an image attachment from a specific Confluence page using an AI language model.
 
     When to Use:
@@ -200,15 +174,14 @@ def describe_image_confluence(
     Args:
         page_id (str): The unique identifier of the Confluence page that contains the image attachment.
         filename (str): The filename of the attached image to be described (e.g., "diagram.png").
+        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
         prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
 
     Returns:
-        dict[str, Any]: A dictionary containing the AI-generated response, which may include:
+        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
             - A summary or description of the image's contents
             - Analysis or interpretation based on the provided prompt
             - Any relevant insights or extracted information depending on the image type and user prompt
 
         The returned dictionary will be the direct output from the AI language model, structured according to the response format
-        of the underlying Azure OpenAI API.
-    """
-```
+        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.

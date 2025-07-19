@@ -1,6 +1,4 @@
 import base64
-import json
-import mimetypes
 import os
 import re
 from typing import Any
@@ -62,7 +60,7 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
         "summary",
         "updated",
     ]
-    params = {"fields": fields}
+    params = {"fields": ",".join(fields)}
     personal_access_token = os.environ["JIRA_PERSONAL_ACCESS_TOKEN"]
     headers = {
         "Authorization": f"Bearer {personal_access_token}",
@@ -85,7 +83,7 @@ def get_attachment_content_jira(url: str) -> bytes | None:
 
 
 @mcp.tool()
-def describe_image_jira(url: str, prompt: str) -> dict[str, Any] | None:
+def describe_image_jira(url: str, mime_type: str, prompt: str) -> dict[str, Any] | None:
     """
     Generates a description of an image attachment from a Jira issue using an AI language model.
 
@@ -95,6 +93,7 @@ def describe_image_jira(url: str, prompt: str) -> dict[str, Any] | None:
 
     Args:
         url (str): The direct download URL for the image attachment stored in Jira.
+        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
         prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
 
     Returns:
@@ -111,9 +110,6 @@ def describe_image_jira(url: str, prompt: str) -> dict[str, Any] | None:
         f"/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}"
         f"/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
     )
-    mime_type, _ = mimetypes.guess_type(url)
-    if mime_type is None:
-        mime_type = "application/octet-stream"
     content = get_attachment_content_jira(url)
     if not content:
         return None
@@ -135,12 +131,11 @@ def describe_image_jira(url: str, prompt: str) -> dict[str, Any] | None:
             }
         ]
     }
-    data_str = json.dumps(data)
     headers = {
         "api-key": os.environ["AZURE_OPENAI_API_KEY"],
         "Content-Type": "application/json",
     }
-    response = requests.post(openai_url, data_str, headers=headers)
+    response = requests.post(openai_url, json=data, headers=headers)
     response.raise_for_status()
     return response.json()
 
@@ -200,18 +195,18 @@ def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
                 - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
                 - 'webui' (str): Web UI preview URL.
             - 'extensions' (dict): Additional metadata:
-                - 'comment' (str): Same as above.
+                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
                 - 'fileSize' (int): File size in bytes.
                 - 'mediaType' (str): MIME type.
             - 'id' (str): The unique identifier for the attachment.
             - 'metadata' (dict): Metadata about the attachment, which contains:
                 - '_expandable' (dict): Expandable fields (for internal Confluence use).
-                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
+                - 'comment' (str): Attachment description.
                 - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
                 - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
-            - 'status' (str): The attachment's status (e.g., 'current').
-            - 'title' (str): The filename or title of the attachment.
-            - 'type' (str): The content type (typically 'attachment').
+                - 'status' (str): The attachment's status (e.g., 'current').
+                - 'title' (str): The filename or title of the attachment.
+                - 'type' (str): The content type (typically 'attachment').
 
         The returned objects may include additional keys depending on the Confluence API.
     """
@@ -228,7 +223,7 @@ def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
     return response_json["results"]
 
 
-def get_attachment_content_confluence(page_id: str, filename: str) -> bytes | None:
+def get_attachment_content_confluence(page_id: str, filename: str) -> bytes:
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/download/attachments/{page_id}/{filename}"
     personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
@@ -256,7 +251,7 @@ def get_page_content_confluence(page_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_page_content_with_gliffy_confluence(page_id: str) -> str:
+def get_page_content_with_gliffy_confluence(page_id: str) -> dict[str, Any]:
     """
     Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
 
@@ -268,7 +263,7 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
         page_id (str): The unique identifier of the Confluence page (e.g., "123456").
 
     Returns:
-        str: A string containing the page's processed HTML content with the following characteristics:
+        dict[str, Any]: A dictionary containing the page's processed HTML content with the following characteristics:
             - If the page contains Gliffy diagrams (embedded as structured macros), each will be detected via regex,
               and the diagram file's content will be extracted from the Confluence attachment.
             - Gliffy diagram macros are replaced inline with <ac:structured-macro ac:name="code"> blocks,
@@ -277,13 +272,8 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
               (such as tables of contents, page links, images, etc.), is preserved.
             - Non-Gliffy attachments, images, and meta structures remain unaffected, except as present in the original page content.
 
-        The returned HTML content may contain, but is not limited to, the following structures:
-            - Headings (e.g., <h1>, <h2>)
-            - Lists and nested lists (<ul>, <li>)
-            - Tables (class="relative-table wrapped")
-            - Confluence macros (expand, toc, jira-link, image, etc.)
-            - Custom macros that reference Confluence/Jira/attachments
-            - Embedded diagrams or code blocks
+        The returned dictionary structure contains all page content and data in the same format as the original Confluence page,
+        except for the processing of Gliffy diagram macros.
     """
     pattern = (
         r'<ac:structured-macro[^>]+ac:name="gliffy"[^>]+>'
@@ -291,7 +281,7 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
         r"</ac:structured-macro>"
     )
 
-    def repl(match: re.Match) -> str:
+    def repl(match: re.Match[str]) -> str:
         filename = match.group(1)
         attachment_content = get_attachment_content_confluence(page_id, filename)
         if not attachment_content:
@@ -305,13 +295,15 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
         )
 
     content = get_page_content_confluence(page_id)
-    content_body = content["body"]["storage"]["value"]
-    return re.sub(pattern, repl, content_body, flags=re.DOTALL)
+    content["body"]["storage"]["value"] = re.sub(
+        pattern, repl, content["body"]["storage"]["value"], flags=re.DOTALL
+    )
+    return content
 
 
 @mcp.tool()
 def describe_image_confluence(
-    page_id: str, filename: str, prompt: str
+    page_id: str, filename: str, mime_type: str, prompt: str
 ) -> dict[str, Any] | None:
     """
     Generates a description of an image attachment from a specific Confluence page using an AI language model.
@@ -323,25 +315,23 @@ def describe_image_confluence(
     Args:
         page_id (str): The unique identifier of the Confluence page that contains the image attachment.
         filename (str): The filename of the attached image to be described (e.g., "diagram.png").
+        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
         prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
 
     Returns:
-        dict[str, Any]: A dictionary containing the AI-generated response, which may include:
+        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
             - A summary or description of the image's contents
             - Analysis or interpretation based on the provided prompt
             - Any relevant insights or extracted information depending on the image type and user prompt
 
         The returned dictionary will be the direct output from the AI language model, structured according to the response format
-        of the underlying Azure OpenAI API.
+        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
     """
-    url = (
+    openai_url = (
         f"{os.environ["AZURE_OPENAI_ENDPOINT"]}"
         f"/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}"
         f"/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
     )
-    mime_type, _ = mimetypes.guess_type(filename)
-    if mime_type is None:
-        mime_type = "application/octet-stream"
     content = get_attachment_content_confluence(page_id, filename)
     if not content:
         return None
@@ -363,12 +353,11 @@ def describe_image_confluence(
             }
         ]
     }
-    data_str = json.dumps(data)
     headers = {
         "api-key": os.environ["AZURE_OPENAI_API_KEY"],
         "Content-Type": "application/json",
     }
-    response = requests.post(url, data_str, headers=headers)
+    response = requests.post(openai_url, json=data, headers=headers)
     response.raise_for_status()
     return response.json()
 
