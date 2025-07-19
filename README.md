@@ -68,6 +68,8 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 ```
 
 ```
+@mcp.tool()
+def describe_image_jira(url: str, mime_type: str, prompt: str) -> dict[str, Any] | None:
     """
     Generates a description of an image attachment from a Jira issue using an AI language model.
 
@@ -77,6 +79,7 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
 
     Args:
         url (str): The direct download URL for the image attachment stored in Jira.
+        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
         prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
 
     Returns:
@@ -154,7 +157,7 @@ def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
 
 ```
 @mcp.tool()
-def get_page_content_with_gliffy_confluence(page_id: str) -> str:
+def get_page_content_with_gliffy_confluence(page_id: str) -> dict[str, Any]:
     """
     Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
 
@@ -166,7 +169,7 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
         page_id (str): The unique identifier of the Confluence page (e.g., "123456").
 
     Returns:
-        str: A string containing the page's processed HTML content with the following characteristics:
+        dict[str, Any]: A dictionary containing the page's processed HTML content with the following characteristics:
             - If the page contains Gliffy diagrams (embedded as structured macros), each will be detected via regex,
               and the diagram file's content will be extracted from the Confluence attachment.
             - Gliffy diagram macros are replaced inline with <ac:structured-macro ac:name="code"> blocks,
@@ -175,20 +178,15 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> str:
               (such as tables of contents, page links, images, etc.), is preserved.
             - Non-Gliffy attachments, images, and meta structures remain unaffected, except as present in the original page content.
 
-        The returned HTML content may contain, but is not limited to, the following structures:
-            - Headings (e.g., <h1>, <h2>)
-            - Lists and nested lists (<ul>, <li>)
-            - Tables (class="relative-table wrapped")
-            - Confluence macros (expand, toc, jira-link, image, etc.)
-            - Custom macros that reference Confluence/Jira/attachments
-            - Embedded diagrams or code blocks
+        The returned dictionary structure contains all page content and data in the same format as the original Confluence page,
+        except for the processing of Gliffy diagram macros.
     """
 ```
 
 ```
 @mcp.tool()
 def describe_image_confluence(
-    page_id: str, filename: str, prompt: str
+    page_id: str, filename: str, mime_type: str, prompt: str
 ) -> dict[str, Any] | None:
     """
     Generates a description of an image attachment from a specific Confluence page using an AI language model.
@@ -200,15 +198,16 @@ def describe_image_confluence(
     Args:
         page_id (str): The unique identifier of the Confluence page that contains the image attachment.
         filename (str): The filename of the attached image to be described (e.g., "diagram.png").
+        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
         prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
 
     Returns:
-        dict[str, Any]: A dictionary containing the AI-generated response, which may include:
+        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
             - A summary or description of the image's contents
             - Analysis or interpretation based on the provided prompt
             - Any relevant insights or extracted information depending on the image type and user prompt
 
         The returned dictionary will be the direct output from the AI language model, structured according to the response format
-        of the underlying Azure OpenAI API.
+        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
     """
 ```
