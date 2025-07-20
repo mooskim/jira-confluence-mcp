@@ -174,55 +174,6 @@ def get_page_id_confluence(space_key: str, title: str) -> str:
     return response_json["results"][0]["id"]
 
 
-@mcp.tool()
-def list_attachments_confluence(page_id: str) -> list[dict[str, Any]]:
-    """
-    Lists all attachments from a specified Confluence page.
-
-    When to Use:
-        Use this function to obtain metadata for all attachments associated with a particular Confluence page,
-        identified by its page ID.
-
-    Args:
-        page_id (str): The unique identifier of the Confluence page whose attachments you want to list.
-
-    Returns:
-        list[dict[str, Any]]: A list of attachment objects for the given page. Each object contains detailed metadata, including (but not limited to):
-            - '_expandable' (dict): More expandable Confluence fields (for advanced use).
-            - '_links' (dict): Various URLs, including:
-                - 'download' (str): Direct download URL for the file.
-                - 'self' (str): API detail URL for the attachment.
-                - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
-                - 'webui' (str): Web UI preview URL.
-            - 'extensions' (dict): Additional metadata:
-                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
-                - 'fileSize' (int): File size in bytes.
-                - 'mediaType' (str): MIME type.
-            - 'id' (str): The unique identifier for the attachment.
-            - 'metadata' (dict): Metadata about the attachment, which contains:
-                - '_expandable' (dict): Expandable fields (for internal Confluence use).
-                - 'comment' (str): Attachment description.
-                - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
-                - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
-                - 'status' (str): The attachment's status (e.g., 'current').
-                - 'title' (str): The filename or title of the attachment.
-                - 'type' (str): The content type (typically 'attachment').
-
-        The returned objects may include additional keys depending on the Confluence API.
-    """
-    base_url = os.environ["CONFLUENCE_BASE_URL"]
-    url = f"{base_url}/rest/api/content/{page_id}/child/attachment"
-    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
-    headers = {
-        "Authorization": f"Bearer {personal_access_token}",
-        "Content-Type": "application/json",
-    }
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    response_json = response.json()
-    return response_json["results"]
-
-
 def get_attachment_content_confluence(page_id: str, filename: str) -> bytes:
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/download/attachments/{page_id}/{filename}"
