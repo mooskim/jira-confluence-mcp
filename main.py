@@ -1,4 +1,5 @@
 import base64
+import collections
 import os
 import re
 from typing import Any
@@ -311,6 +312,59 @@ def describe_image_confluence(
     response = requests.post(openai_url, json=data, headers=headers)
     response.raise_for_status()
     return response.json()
+
+
+def get_child_pages_confluence(page_id: str) -> list[dict[str, str]]:
+    base_url = os.environ["CONFLUENCE_BASE_URL"]
+    url = f"{base_url}/rest/api/content/{page_id}/child"
+    params = {"expand": "page.body.VIEW"}
+    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(url, params, headers=headers)
+    response.raise_for_status()
+    response_json = response.json()
+    return [
+        {"id": page["id"], "title": page["title"], "children": []}
+        for page in response_json["page"]["results"]
+    ]
+
+
+@mcp.tool()
+def get_descendant_pages_confluence(page_id: str, title: str = "") -> dict[str, Any]:
+    """
+    Retrieves the hierarchical tree of all descendant pages for a specific Confluence page.
+
+    When to Use:
+        Use this function to obtain the entire descendant page structure (including children, grandchildren, etc.)
+        of a given Confluence page by specifying its page ID. This is useful when you need the full nested tree of subpages
+        for navigation, visualization, or content aggregation purposes.
+
+    Args:
+        page_id (str): The unique identifier of the root Confluence page (e.g., "123456").
+        title (str, optional): The title of the root Confluence page. If not provided, an empty string is used.
+
+    Returns:
+        dict[str, Any]: A dictionary containing the hierarchical structure of descendant pages in the format:
+            - 'id' (str): The ID of the current (root) page.
+            - 'title' (str): The title of the current (root) page.
+            - 'children' (list): A list of child pages, where each child is itself a dictionary
+              with the same structure ('id', 'title', 'children'), forming a recursive tree.
+
+        The returned structure represents the complete page tree rooted at the specified page, allowing you to traverse all levels of descendants.
+    """
+    queue = collections.deque()
+    root = {"id": page_id, "title": title, "children": []}
+    queue.append(root)
+    while queue:
+        current_node = queue.popleft()
+        child_pages = get_child_pages_confluence(current_node["id"])
+        for child_page in child_pages:
+            current_node["children"].append(child_page)
+            queue.append(child_page)
+    return root
 
 
 def main():
