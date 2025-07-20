@@ -150,3 +150,25 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
 
         The returned dictionary will be the direct output from the AI language model, structured according to the response format
         of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
+
+### get_descendant_pages_confluence
+
+    Retrieves the hierarchical tree of all descendant pages for a specific Confluence page.
+
+    When to Use:
+        Use this function to obtain the entire descendant page structure (including children, grandchildren, etc.)
+        of a given Confluence page by specifying its page ID. This is useful when you need the full nested tree of subpages
+        for navigation, visualization, or content aggregation purposes.
+
+    Args:
+        page_id (str): The unique identifier of the root Confluence page (e.g., "123456").
+        title (str, optional): The title of the root Confluence page. If not provided, an empty string is used.
+
+    Returns:
+        dict[str, Any]: A dictionary containing the hierarchical structure of descendant pages in the format:
+            - 'id' (str): The ID of the current (root) page.
+            - 'title' (str): The title of the current (root) page.
+            - 'children' (list): A list of child pages, where each child is itself a dictionary
+              with the same structure ('id', 'title', 'children'), forming a recursive tree.
+
+        The returned structure represents the complete page tree rooted at the specified page, allowing you to traverse all levels of descendants.
