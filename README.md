@@ -104,41 +104,6 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
         The returned string represents the page's internal ID in the Confluence instance and can be used
         as input to other functions that require a page identifier.
 
-### list_attachments_confluence
-
-    Lists all attachments from a specified Confluence page.
-
-    When to Use:
-        Use this function to obtain metadata for all attachments associated with a particular Confluence page,
-        identified by its page ID.
-
-    Args:
-        page_id (str): The unique identifier of the Confluence page whose attachments you want to list.
-
-    Returns:
-        list[dict[str, Any]]: A list of attachment objects for the given page. Each object contains detailed metadata, including (but not limited to):
-            - '_expandable' (dict): More expandable Confluence fields (for advanced use).
-            - '_links' (dict): Various URLs, including:
-                - 'download' (str): Direct download URL for the file.
-                - 'self' (str): API detail URL for the attachment.
-                - 'thumbnail' (str, optional): Thumbnail preview URL (for images).
-                - 'webui' (str): Web UI preview URL.
-            - 'extensions' (dict): Additional metadata:
-                - 'comment' (str): Attachment description (e.g., 'GLIFFY DIAGRAM', 'GLIFFY IMAGE').
-                - 'fileSize' (int): File size in bytes.
-                - 'mediaType' (str): MIME type.
-            - 'id' (str): The unique identifier for the attachment.
-            - 'metadata' (dict): Metadata about the attachment, which contains:
-                - '_expandable' (dict): Expandable fields (for internal Confluence use).
-                - 'comment' (str): Attachment description.
-                - 'labels' (dict): Label metadata (may include 'results', 'start', 'limit', 'size', and '_links').
-                - 'mediaType' (str): MIME type, such as 'application/gliffy+json' or 'image/png'.
-                - 'status' (str): The attachment's status (e.g., 'current').
-                - 'title' (str): The filename or title of the attachment.
-                - 'type' (str): The content type (typically 'attachment').
-
-        The returned objects may include additional keys depending on the Confluence API.
-
 ### get_page_content_with_gliffy_confluence
 
     Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
