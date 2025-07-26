@@ -29,6 +29,28 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
 
 ## Tools
 
+### create_issue_jira
+
+    Creates a new Jira issue in a specified project.
+
+    When to Use:
+        Use this function to programmatically create a new issue in Jira by specifying the project key, issue type, summary, and description.
+        This is useful for automated issue reporting, workflows, or integrating services that need to log new tickets in Jira.
+
+    Args:
+        project (str): The key for the Jira project where the issue should be created (e.g., "PROJ").
+        issuetype (str): The type of issue to create (e.g., "Bug", "Task", "Story").
+        summary (str): A brief summary or title for the new issue.
+        description (str): A detailed description of the issue to provide context and reproduction steps if applicable.
+
+    Returns:
+        dict[str, Any]: A dictionary containing metadata about the newly created Jira issue, which may include:
+            - 'id' (str): The unique identifier of the issue.
+            - 'key' (str): The key of the new issue (e.g., "PROJ-123").
+            - 'self' (str): The REST API URL of the created issue.
+
+        The returned dictionary structure matches what is returned by Jira's REST API, and may include additional fields.
+
 ### get_issue_content_jira
 
     Retrieves detailed information about a specific Jira issue using its issue ID or key.
