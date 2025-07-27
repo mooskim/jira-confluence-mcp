@@ -220,6 +220,65 @@ def get_page_id_confluence(space_key: str, title: str) -> str:
     return response_json["results"][0]["id"]
 
 
+def get_space_confluence(page_id: str) -> str:
+    base_url = os.environ["CONFLUENCE_BASE_URL"]
+    url = f"{base_url}/rest/api/content/{page_id}"
+    params = {"expand": "space"}
+    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(url, params, headers=headers)
+    response.raise_for_status()
+    response_json = response.json()
+    return response_json["space"]["key"]
+
+
+@mcp.tool()
+def create_page_confluence(ancestor_id: str, title: str, body: str) -> dict[str, Any]:
+    """
+    Creates a new Confluence page under a specified parent.
+
+    When to Use:
+        Use this function to programmatically create a new page in a Confluence space under a given parent page
+        by specifying the ancestor (parent page) ID, title, and content body.
+        This is useful for automation, documentation workflows, or integrating services that need to add new pages to Confluence.
+
+    Args:
+        ancestor_id (str): The page ID of the ancestor (parent page) under which the new page will be added.
+        title (str): The title of the new Confluence page.
+        body (str): The content of the new page, in Confluence storage format (HTML-based).
+
+    Returns:
+        dict[str, Any]: A dictionary containing metadata about the created Confluence page, which may include:
+            - 'id' (str): The unique identifier of the new page.
+            - 'title' (str): The title of the page.
+            - 'space' (dict): Information about the Confluence space.
+            - 'body' (dict): Content details, depending on the API's response structure.
+
+        The returned dictionary structure matches what is returned by Confluence's REST API and may contain additional fields.
+    """
+    base_url = os.environ["CONFLUENCE_BASE_URL"]
+    url = f"{base_url}/rest/api/content"
+    space = get_space_confluence(ancestor_id)
+    data = {
+        "ancestors": [{"id": ancestor_id}],
+        "body": {"storage": {"representation": "storage", "value": body}},
+        "space": {"key": space},
+        "title": title,
+        "type": "page",
+    }
+    personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.post(url, json=data, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 def get_attachment_content_confluence(page_id: str, filename: str) -> bytes:
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/download/attachments/{page_id}/{filename}"

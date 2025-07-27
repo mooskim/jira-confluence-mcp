@@ -126,6 +126,29 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
         The returned string represents the page's internal ID in the Confluence instance and can be used
         as input to other functions that require a page identifier.
 
+### create_page_confluence
+
+    Creates a new Confluence page under a specified parent.
+
+    When to Use:
+        Use this function to programmatically create a new page in a Confluence space under a given parent page
+        by specifying the ancestor (parent page) ID, title, and content body.
+        This is useful for automation, documentation workflows, or integrating services that need to add new pages to Confluence.
+
+    Args:
+        ancestor_id (str): The page ID of the ancestor (parent page) under which the new page will be added.
+        title (str): The title of the new Confluence page.
+        body (str): The content of the new page, in Confluence storage format (HTML-based).
+
+    Returns:
+        dict[str, Any]: A dictionary containing metadata about the created Confluence page, which may include:
+            - 'id' (str): The unique identifier of the new page.
+            - 'title' (str): The title of the page.
+            - 'space' (dict): Information about the Confluence space.
+            - 'body' (dict): Content details, depending on the API's response structure.
+
+        The returned dictionary structure matches what is returned by Confluence's REST API and may contain additional fields.
+
 ### get_page_content_with_gliffy_confluence
 
     Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
