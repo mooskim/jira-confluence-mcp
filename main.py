@@ -1,5 +1,6 @@
 import base64
 import collections
+import mimetypes
 import os
 import re
 from typing import Any
@@ -12,35 +13,33 @@ mcp = fastmcp.FastMCP("jira-confluence-mcp")
 
 @mcp.tool()
 def create_issue_jira(
-    project: str, issuetype: str, summary: str, description: str
+    project: str, issue_type: str, summary: str, description: str
 ) -> dict[str, Any]:
     """
-    Creates a new Jira issue in a specified project.
-
-    When to Use:
-        Use this function to programmatically create a new issue in Jira by specifying the project key, issue type, summary, and description.
-        This is useful for automated issue reporting, workflows, or integrating services that need to log new tickets in Jira.
+    When to use:
+        Use this function to create a new Jira issue.
 
     Args:
-        project (str): The key for the Jira project where the issue should be created (e.g., "PROJ").
-        issuetype (str): The type of issue to create (e.g., "Bug", "Task", "Story").
-        summary (str): A brief summary or title for the new issue.
-        description (str): A detailed description of the issue to provide context and reproduction steps if applicable.
+        project (str): The key of the project where the issue will be created.
+        issue_type (str): The type of issue to create. Available types are Bug, Story, or Task.
+            Bug: A problem which impairs or prevents the functions of a product.
+            Story: The smallest unit of work that needs to be done.
+            Task: Represents work that needs to be done.
+        summary (str): A brief summary of the issue to create.
+        description (str): A detailed description of the issue to create.
 
     Returns:
-        dict[str, Any]: A dictionary containing metadata about the newly created Jira issue, which may include:
-            - 'id' (str): The unique identifier of the issue.
-            - 'key' (str): The key of the new issue (e.g., "PROJ-123").
-            - 'self' (str): The REST API URL of the created issue.
-
-        The returned dictionary structure matches what is returned by Jira's REST API, and may include additional fields.
+        dict[str, Any]: Information about the created Jira issue as a dictionary, including:
+            id: The id of the created issue.
+            key: The key of the created issue.
+            self: The URL of the created issue.
     """
     base_url = os.environ["JIRA_BASE_URL"]
     url = f"{base_url}/rest/api/2/issue"
-    data = {
+    payload = {
         "fields": {
             "description": description,
-            "issuetype": {"name": issuetype},
+            "issuetype": {"name": issue_type},
             "project": {"key": project},
             "summary": summary,
         }
@@ -50,45 +49,39 @@ def create_issue_jira(
         "Authorization": f"Bearer {personal_access_token}",
         "Content-Type": "application/json",
     }
-    response = requests.post(url, json=data, headers=headers)
+    response = requests.post(url, json=payload, headers=headers)
     response.raise_for_status()
     return response.json()
 
 
 @mcp.tool()
-def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
+def get_issue_jira(issue_id_or_key: str) -> dict[str, Any]:
     """
-    Retrieves detailed information about a specific Jira issue using its issue ID or key.
-
-    When to Use:
-        Use this function to obtain comprehensive and structured information about a Jira issue by specifying its issue ID or key
-        (e.g., "PROJ-123"). This includes metadata, status, description, attachments, comments, and more.
+    When to use:
+        Use this function to retrieve the contents of a Jira issue.
 
     Args:
-        issue_id_or_key (str): The issue ID or key of the Jira issue to retrieve (e.g., "PROJ-123").
+        issue_id_or_key (str): The id or key of the Jira issue to retrieve.
 
     Returns:
-        dict[str, Any]: A dictionary containing extensive information about the Jira issue, including but not limited to:
-            - 'expand' (str): Comma-separated fields that can be expanded with further API calls.
-            - 'fields' (dict): A dictionary containing major fields:
-                - 'assignee' (dict): Details of the issue assignee (if assigned).
-                - 'attachment' (list): List of attached files and their metadata.
-                - 'comment' (dict): Metadata for comments, with a list of comment details (author, body, created/updated time, etc.).
-                - 'components' (list): List of components related to the issue.
-                - 'created' (str): The creation datetime (ISO 8601).
-                - 'description' (str): A detailed description, may contain wiki markup or HTML.
-                - 'issuetype' (dict): Issue type information (name, description, icons, etc.).
-                - 'labels' (list): List of any labels on the issue.
-                - 'reporter' (dict): Details of the issue reporter.
-                - 'status' (dict): Current workflow status (name, description, etc.).
-                - 'summary' (str): A short title or summary of the issue.
-                - 'updated' (str): Last updated datetime.
-            - 'id' (str): The unique identifier of the issue.
-            - 'key' (str): The key of the issue (e.g., "PROJ-123").
-            - Other top-level metadata, such as 'self' (REST API URL for this issue), may be present.
-
-        The returned dictionary structure matches what is returned by Jira's REST API for the selected fields, and will contain
-        any relevant or additional keys if available in the response. Paging and meta fields are included for comment lists.
+        dict[str, Any]: Information about the retrieved Jira issue as a dictionary, including:
+            expand: Additional fields that can be requested.
+            fields: Details of the issue, including:
+                assignee: The person to whom the issue is currently assigned.
+                attachment: Files attached to the issue.
+                comment: Comments on the issue.
+                components: Project components to which this issue relates.
+                created: The time and date when this issue was created.
+                description: A detailed description of the issue.
+                issuetype: The type of the issue.
+                labels: Labels to which this issue relates.
+                reporter: The person who created the issue.
+                status: The current status of the issue in its workflow.
+                summary: A brief one-line summary of the issue.
+                updated: The time and date when this issue was last updated.
+            id: The id of the retrieved issue.
+            key: The key of the retrieved issue.
+            self: The URL of the retrieved issue.
     """
     base_url = os.environ["JIRA_BASE_URL"]
     url = f"{base_url}/rest/api/2/issue/{issue_id_or_key}"
@@ -117,7 +110,7 @@ def get_issue_content_jira(issue_id_or_key: str) -> dict[str, Any]:
     return response.json()
 
 
-def get_attachment_content_jira(url: str) -> bytes | None:
+def get_attachment_jira(url: str) -> bytes:
     personal_access_token = os.environ["JIRA_PERSONAL_ACCESS_TOKEN"]
     headers = {
         "Authorization": f"Bearer {personal_access_token}",
@@ -129,45 +122,37 @@ def get_attachment_content_jira(url: str) -> bytes | None:
 
 
 @mcp.tool()
-def describe_image_jira(url: str, mime_type: str, prompt: str) -> dict[str, Any] | None:
+def describe_image_jira(url: str, prompt: str) -> str:
     """
-    Generates a description of an image attachment from a Jira issue using an AI language model.
-
-    When to Use:
-        Use this function to obtain an intelligent summary or analysis of a specific image attachment from Jira (such as a screenshot, diagram, or photo)
-        by providing the direct download URL of the image and a custom prompt to guide the AI's description or analysis.
+    When to use:
+        Use this function to ask a prompt about the contents of an image attachment in a Jira issue and retrieve the answer.
 
     Args:
-        url (str): The direct download URL for the image attachment stored in Jira.
-        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
-        prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
+        url (str): The URL of the attached file.
+        prompt (str): The prompt about the image.
 
     Returns:
-        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
-            - A summary or description of the image's contents
-            - Analysis or interpretation based on the provided prompt
-            - Any relevant insights or extracted information depending on the image type and user prompt
-
-        The returned dictionary will be the direct output from the AI language model, structured according to the response format
-        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
+        str: The answer returned after processing the prompt about the image.
     """
     openai_url = (
         f"{os.environ["AZURE_OPENAI_ENDPOINT"]}"
         f"/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}"
         f"/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
     )
-    content = get_attachment_content_jira(url)
-    if not content:
-        return None
-    content_b64 = base64.b64encode(content)
-    content_b64_utf8 = content_b64.decode("utf-8")
-    data = {
+    media_type, _ = mimetypes.guess_type(url)
+    try:
+        attachment = get_attachment_jira(url)
+    except Exception as e:
+        return ""
+    attachment_b64 = base64.b64encode(attachment)
+    attachment_b64_utf8 = attachment_b64.decode("utf-8")
+    payload = {
         "messages": [
             {
                 "content": [
                     {
                         "image_url": {
-                            "url": f"data:{mime_type};base64,{content_b64_utf8}"
+                            "url": f"data:{media_type};base64,{attachment_b64_utf8}"
                         },
                         "type": "image_url",
                     },
@@ -181,30 +166,24 @@ def describe_image_jira(url: str, mime_type: str, prompt: str) -> dict[str, Any]
         "api-key": os.environ["AZURE_OPENAI_API_KEY"],
         "Content-Type": "application/json",
     }
-    response = requests.post(openai_url, json=data, headers=headers)
+    response = requests.post(openai_url, json=payload, headers=headers)
     response.raise_for_status()
-    return response.json()
+    response_json = response.json()
+    return response_json["choices"][0]["message"]["content"]
 
 
 @mcp.tool()
 def get_page_id_confluence(space_key: str, title: str) -> str:
     """
-    Retrieves the unique Confluence page ID based on the space key and page title.
-
-    When to Use:
-        Use this function to obtain the internal unique identifier (page ID) of a specific Confluence page,
-        by specifying its space key and page title. This ID can be used for subsequent operations such as
-        listing attachments, retrieving page content, or updating the page.
+    When to use:
+        Use this function to retrieve the page ID in Confluence.
 
     Args:
-        space_key (str): The key of the Confluence space where the page is located (e.g., "ENG").
-        title (str): The title of the Confluence page as shown in the UI (e.g., "Design Overview").
+        space_key (str): The space key of the page to retrieve.
+        title (str): The title of the page to retrieve.
 
     Returns:
-        str: The unique identifier (page ID) assigned to the specified Confluence page. For example, "123456".
-
-        The returned string represents the page's internal ID in the Confluence instance and can be used
-        as input to other functions that require a page identifier.
+        str: The ID of the retrieved page.
     """
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/rest/api/content"
@@ -220,7 +199,7 @@ def get_page_id_confluence(space_key: str, title: str) -> str:
     return response_json["results"][0]["id"]
 
 
-def get_space_confluence(page_id: str) -> str:
+def get_space_key_confluence(page_id: str) -> str:
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/rest/api/content/{page_id}"
     params = {"expand": "space"}
@@ -236,36 +215,28 @@ def get_space_confluence(page_id: str) -> str:
 
 
 @mcp.tool()
-def create_page_confluence(ancestor_id: str, title: str, body: str) -> dict[str, Any]:
+def create_page_confluence(
+    parent_page_id: str, title: str, body: str
+) -> dict[str, Any]:
     """
-    Creates a new Confluence page under a specified parent.
-
-    When to Use:
-        Use this function to programmatically create a new page in a Confluence space under a given parent page
-        by specifying the ancestor (parent page) ID, title, and content body.
-        This is useful for automation, documentation workflows, or integrating services that need to add new pages to Confluence.
+    When to use:
+        Use this function to create a Confluence page.
 
     Args:
-        ancestor_id (str): The page ID of the ancestor (parent page) under which the new page will be added.
-        title (str): The title of the new Confluence page.
-        body (str): The content of the new page, in Confluence storage format (HTML-based).
+        parent_page_id (str): The ID of the parent page under which to create the page.
+        title (str): The title of the new page to be created.
+        body (str): The body of the page to be created.
 
     Returns:
-        dict[str, Any]: A dictionary containing metadata about the created Confluence page, which may include:
-            - 'id' (str): The unique identifier of the new page.
-            - 'title' (str): The title of the page.
-            - 'space' (dict): Information about the Confluence space.
-            - 'body' (dict): Content details, depending on the API's response structure.
-
-        The returned dictionary structure matches what is returned by Confluence's REST API and may contain additional fields.
+        dict[str, Any]: Information about the created Confluence page as a dictionary.
     """
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/rest/api/content"
-    space = get_space_confluence(ancestor_id)
-    data = {
-        "ancestors": [{"id": ancestor_id}],
+    space_key = get_space_key_confluence(parent_page_id)
+    payload = {
+        "ancestors": [{"id": parent_page_id}],
         "body": {"storage": {"representation": "storage", "value": body}},
-        "space": {"key": space},
+        "space": {"key": space_key},
         "title": title,
         "type": "page",
     }
@@ -274,12 +245,12 @@ def create_page_confluence(ancestor_id: str, title: str, body: str) -> dict[str,
         "Authorization": f"Bearer {personal_access_token}",
         "Content-Type": "application/json",
     }
-    response = requests.post(url, json=data, headers=headers)
+    response = requests.post(url, json=payload, headers=headers)
     response.raise_for_status()
     return response.json()
 
 
-def get_attachment_content_confluence(page_id: str, filename: str) -> bytes:
+def get_attachment_confluence(page_id: str, filename: str) -> bytes:
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/download/attachments/{page_id}/{filename}"
     personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
@@ -292,7 +263,7 @@ def get_attachment_content_confluence(page_id: str, filename: str) -> bytes:
     return response.content
 
 
-def get_page_content_confluence(page_id: str) -> dict[str, Any]:
+def get_page_confluence(page_id: str) -> dict[str, Any]:
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/rest/api/content/{page_id}"
     params = {"expand": "body.storage"}
@@ -307,29 +278,26 @@ def get_page_content_confluence(page_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_page_content_with_gliffy_confluence(page_id: str) -> dict[str, Any]:
+def get_page_with_gliffy_confluence(page_id: str) -> dict[str, Any]:
     """
-    Retrieves and processes rich content from a specific Confluence page with embedded Gliffy diagram data.
-
-    When to Use:
-        Use this function to obtain detailed HTML content of a Confluence page by specifying its page ID.
-        Especially useful when you need to extract or replace embedded Gliffy diagrams as JSON data blocks.
+    When to use:
+        Use this function to retrieve the contents of a Confluence page. If a Gliffy diagram is included in the page body, the corresponding Gliffy file will be displayed inline within the body as JSON.
 
     Args:
-        page_id (str): The unique identifier of the Confluence page (e.g., "123456").
+        page_id (str): The page ID of the page to retrieve.
 
     Returns:
-        dict[str, Any]: A dictionary containing the page's processed HTML content with the following characteristics:
-            - If the page contains Gliffy diagrams (embedded as structured macros), each will be detected via regex,
-              and the diagram file's content will be extracted from the Confluence attachment.
-            - Gliffy diagram macros are replaced inline with <ac:structured-macro ac:name="code"> blocks,
-              presenting the attachment content as CDATA.
-            - The rest of the page's HTML markup, including headings, text, expand blocks, lists, links, and Confluence macros
-              (such as tables of contents, page links, images, etc.), is preserved.
-            - Non-Gliffy attachments, images, and meta structures remain unaffected, except as present in the original page content.
-
-        The returned dictionary structure contains all page content and data in the same format as the original Confluence page,
-        except for the processing of Gliffy diagram macros.
+        dict[str, Any]: Information about the retrieved Confluence page as a dictionary, including:
+            _expandable (dict): Related pages of the retrieved page.
+            _links (dict): Related links of the retrieved page.
+            body (dict): The content of the retrieved page.
+                storage (dict): The storage format and structure of the content.
+                    value (str): The actual page content as a string.
+            extensions (dict): The position of the retrieved page within the space.
+            id (str): The ID of the retrieved page.
+            status (str): The status of the retrieved page.
+            title (str): The title of the retrieved page.
+            type (str): The type of the retrieved page.
     """
     pattern = (
         r'<ac:structured-macro[^>]+ac:name="gliffy"[^>]+>'
@@ -339,67 +307,58 @@ def get_page_content_with_gliffy_confluence(page_id: str) -> dict[str, Any]:
 
     def repl(match: re.Match[str]) -> str:
         filename = match.group(1)
-        attachment_content = get_attachment_content_confluence(page_id, filename)
-        if not attachment_content:
+        try:
+            attachment = get_attachment_confluence(page_id, filename)
+        except Exception as e:
             return ""
-        attachment_content_utf8 = attachment_content.decode("utf-8")
+        attachment_utf8 = attachment.decode("utf-8")
         return (
             '<ac:structured-macro ac:name="code">'
             '<ac:parameter ac:name="language">json</ac:parameter>'
-            f"<ac:plain-text-body><![CDATA[{attachment_content_utf8}]]></ac:plain-text-body>"
+            f"<ac:plain-text-body><![CDATA[{attachment_utf8}]]></ac:plain-text-body>"
             "</ac:structured-macro>"
         )
 
-    content = get_page_content_confluence(page_id)
-    content["body"]["storage"]["value"] = re.sub(
-        pattern, repl, content["body"]["storage"]["value"], flags=re.DOTALL
+    page = get_page_confluence(page_id)
+    page["body"]["storage"]["value"] = re.sub(
+        pattern, repl, page["body"]["storage"]["value"], flags=re.DOTALL
     )
-    return content
+    return page
 
 
 @mcp.tool()
-def describe_image_confluence(
-    page_id: str, filename: str, mime_type: str, prompt: str
-) -> dict[str, Any] | None:
+def describe_image_confluence(page_id: str, filename: str, prompt: str) -> str:
     """
-    Generates a description of an image attachment from a specific Confluence page using an AI language model.
-
-    When to Use:
-        Use this function to obtain an intelligent summary or analysis of a particular image (such as a screenshot, diagram, or photo)
-        stored as an attachment on a Confluence page. The AI's response can be tailored by providing a custom prompt.
+    When to use:
+        Use this function to ask a prompt about the contents of an image attachment in a Confluence page and retrieve the answer.
 
     Args:
-        page_id (str): The unique identifier of the Confluence page that contains the image attachment.
-        filename (str): The filename of the attached image to be described (e.g., "diagram.png").
-        mime_type (str): The MIME type of the image file (e.g., "image/png", "image/jpeg").
-        prompt (str): The prompt or question to guide the AI's description or analysis of the image (e.g., "Describe the main features of this diagram.").
+        page_id (str): The ID of the Confluence page that contains the image attachment.
+        filename (str): The filename of the attached image.
+        prompt (str): The prompt about the image.
 
     Returns:
-        dict[str, Any] | None: A dictionary containing the AI-generated response, which may include:
-            - A summary or description of the image's contents
-            - Analysis or interpretation based on the provided prompt
-            - Any relevant insights or extracted information depending on the image type and user prompt
-
-        The returned dictionary will be the direct output from the AI language model, structured according to the response format
-        of the underlying Azure OpenAI API. Returns None if the image content cannot be retrieved.
+        str: The answer returned after processing the prompt about the image.
     """
     openai_url = (
         f"{os.environ["AZURE_OPENAI_ENDPOINT"]}"
         f"/openai/deployments/{os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"]}"
         f"/chat/completions?api-version={os.environ["AZURE_OPENAI_API_VERSION"]}"
     )
-    content = get_attachment_content_confluence(page_id, filename)
-    if not content:
-        return None
-    content_b64 = base64.b64encode(content)
-    content_b64_utf8 = content_b64.decode("utf-8")
-    data = {
+    media_type, _ = mimetypes.guess_type(filename)
+    try:
+        attachment = get_attachment_confluence(page_id, filename)
+    except Exception as e:
+        return ""
+    attachment_b64 = base64.b64encode(attachment)
+    attachment_b64_utf8 = attachment_b64.decode("utf-8")
+    payload = {
         "messages": [
             {
                 "content": [
                     {
                         "image_url": {
-                            "url": f"data:{mime_type};base64,{content_b64_utf8}"
+                            "url": f"data:{media_type};base64,{attachment_b64_utf8}"
                         },
                         "type": "image_url",
                     },
@@ -413,9 +372,10 @@ def describe_image_confluence(
         "api-key": os.environ["AZURE_OPENAI_API_KEY"],
         "Content-Type": "application/json",
     }
-    response = requests.post(openai_url, json=data, headers=headers)
+    response = requests.post(openai_url, json=payload, headers=headers)
     response.raise_for_status()
-    return response.json()
+    response_json = response.json()
+    return response_json["choices"][0]["message"]["content"]
 
 
 def get_child_pages_confluence(page_id: str) -> list[dict[str, str]]:
@@ -431,44 +391,37 @@ def get_child_pages_confluence(page_id: str) -> list[dict[str, str]]:
     response.raise_for_status()
     response_json = response.json()
     return [
-        {"id": page["id"], "title": page["title"], "children": []}
-        for page in response_json["page"]["results"]
+        {"id": child_page["id"], "title": child_page["title"], "children": []}
+        for child_page in response_json["page"]["results"]
     ]
 
 
 @mcp.tool()
-def get_descendant_pages_confluence(page_id: str, title: str = "") -> dict[str, Any]:
+def get_page_tree_confluence(page_id: str, title: str = "") -> dict[str, Any]:
     """
-    Retrieves the hierarchical tree of all descendant pages for a specific Confluence page.
-
-    When to Use:
-        Use this function to obtain the entire descendant page structure (including children, grandchildren, etc.)
-        of a given Confluence page by specifying its page ID. This is useful when you need the full nested tree of subpages
-        for navigation, visualization, or content aggregation purposes.
+    When to use:
+        Use this function to retrieve all descendant pages of a Confluence page.
 
     Args:
-        page_id (str): The unique identifier of the root Confluence page (e.g., "123456").
-        title (str, optional): The title of the root Confluence page. If not provided, an empty string is used.
+        page_id (str): The page ID of the page to retrieve descendants for.
+        title (str, optional): The title of the page.
 
     Returns:
-        dict[str, Any]: A dictionary containing the hierarchical structure of descendant pages in the format:
-            - 'id' (str): The ID of the current (root) page.
-            - 'title' (str): The title of the current (root) page.
-            - 'children' (list): A list of child pages, where each child is itself a dictionary
-              with the same structure ('id', 'title', 'children'), forming a recursive tree.
-
-        The returned structure represents the complete page tree rooted at the specified page, allowing you to traverse all levels of descendants.
+        dict[str, Any]: Information about all descendant pages as a dictionary, including:
+            page_id (str): The page ID of the current node.
+            title (str): The title of the current node.
+            children (list): The child nodes of the current node.
     """
     queue = collections.deque()
-    root = {"id": page_id, "title": title, "children": []}
-    queue.append(root)
+    page_tree = {"page_id": page_id, "title": title, "children": []}
+    queue.append(page_tree)
     while queue:
-        current_node = queue.popleft()
-        child_pages = get_child_pages_confluence(current_node["id"])
+        current_page = queue.popleft()
+        child_pages = get_child_pages_confluence(current_page["id"])
         for child_page in child_pages:
-            current_node["children"].append(child_page)
+            current_page["children"].append(child_page)
             queue.append(child_page)
-    return root
+    return page_tree
 
 
 def main():
