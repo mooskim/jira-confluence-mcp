@@ -413,7 +413,7 @@ def get_page_tree_confluence(page_id: str, title: str = "") -> dict[str, Any]:
             children (list): The child nodes of the current node.
     """
     queue = collections.deque()
-    page_tree = {"page_id": page_id, "title": title, "children": []}
+    page_tree = {"id": page_id, "title": title, "children": []}
     queue.append(page_tree)
     while queue:
         current_page = queue.popleft()
