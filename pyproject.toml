@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jira-confluence-mcp"
-version = "0.4.1"
+version = "0.4.2"
 description = "jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a standardized way for AI models to access and interact with resources from Jira and Confluence."
 readme = "README.md"
 requires-python = ">=3.12"

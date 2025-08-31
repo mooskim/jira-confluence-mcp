@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 from typing import Any
+from urllib import parse
 
 from mcp.server import fastmcp
 import requests
@@ -187,7 +188,9 @@ def get_page_id_confluence(space_key: str, title: str) -> str:
     """
     base_url = os.environ["CONFLUENCE_BASE_URL"]
     url = f"{base_url}/rest/api/content"
-    params = {"spaceKey": space_key, "title": title}
+    space_key_unquoted = parse.unquote_plus(space_key)
+    title_unquoted = parse.unquote_plus(title)
+    params = {"spaceKey": space_key_unquoted, "title": title_unquoted}
     personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
     headers = {
         "Authorization": f"Bearer {personal_access_token}",
