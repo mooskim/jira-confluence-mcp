@@ -89,6 +89,41 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
     Returns:
         str: The answer returned after processing the prompt about the image.
 
+### search_jira
+
+    When to use:
+        Use this function to search for Jira issues using JQL (Jira Query Language).
+
+    Args:
+        jql (str): The JQL query string to use for searching issues.
+        start_at (int): The index of the first issue to return.
+        max_results (int): The maximum number of issues to return.
+
+    Returns:
+        dict[str, Any]: Information about the searched Jira issues as a dictionary, including:
+            expand (str): Additional fields that can be requested.
+            issues (list): List of matching Jira issues. Each issue includes:
+                expand (str): Additional fields that can be requested.
+                fields (dict): Details of the issue, including:
+                    assignee (dict): The person to whom the issue is currently assigned.
+                    attachment (list): Files attached to the issue.
+                    comment (dict): Comments on the issue.
+                    components (list): Project components to which this issue relates.
+                    created (str): The time and date when this issue was created.
+                    description (str): A detailed description of the issue.
+                    issuetype (dict): The type of the issue.
+                    labels (list): Labels to which this issue relates.
+                    reporter (dict): The person who created the issue.
+                    status (dict): The current status of the issue in its workflow.
+                    summary (str): A brief one-line summary of the issue.
+                    updated (str): The time and date when this issue was last updated.
+                id (str): The id of the issue.
+                key (str): The key of the issue.
+                self (str): The URL of the issue.
+            maxResults (int): The maximum number of issues returned.
+            startAt (int): The index of the first returned issue.
+            total (int): The total number of results matching the JQL query.
+
 ### get_page_id_confluence
 
     When to use:

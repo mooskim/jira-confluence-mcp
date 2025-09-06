@@ -174,6 +174,74 @@ def describe_image_jira(url: str, prompt: str) -> str:
 
 
 @mcp.tool()
+def search_jira(jql: str, start_at: int, max_results: int) -> dict[str, Any]:
+    """
+    When to use:
+        Use this function to search for Jira issues using JQL (Jira Query Language).
+
+    Args:
+        jql (str): The JQL query string to use for searching issues.
+        start_at (int): The index of the first issue to return.
+        max_results (int): The maximum number of issues to return.
+
+    Returns:
+        dict[str, Any]: Information about the searched Jira issues as a dictionary, including:
+            expand (str): Additional fields that can be requested.
+            issues (list): List of matching Jira issues. Each issue includes:
+                expand (str): Additional fields that can be requested.
+                fields (dict): Details of the issue, including:
+                    assignee (dict): The person to whom the issue is currently assigned.
+                    attachment (list): Files attached to the issue.
+                    comment (dict): Comments on the issue.
+                    components (list): Project components to which this issue relates.
+                    created (str): The time and date when this issue was created.
+                    description (str): A detailed description of the issue.
+                    issuetype (dict): The type of the issue.
+                    labels (list): Labels to which this issue relates.
+                    reporter (dict): The person who created the issue.
+                    status (dict): The current status of the issue in its workflow.
+                    summary (str): A brief one-line summary of the issue.
+                    updated (str): The time and date when this issue was last updated.
+                id (str): The id of the issue.
+                key (str): The key of the issue.
+                self (str): The URL of the issue.
+            maxResults (int): The maximum number of issues returned.
+            startAt (int): The index of the first returned issue.
+            total (int): The total number of results matching the JQL query.
+    """
+    base_url = os.environ["JIRA_BASE_URL"]
+    url = f"{base_url}/rest/api/2/search"
+    fields = [
+        "assignee",
+        "attachment",
+        "comment",
+        "components",
+        "created",
+        "description",
+        "issuetype",
+        "labels",
+        "reporter",
+        "status",
+        "summary",
+        "updated",
+    ]
+    params = {
+        "fields": ",".join(fields),
+        "jql": jql,
+        "maxResults": max_results,
+        "startAt": start_at,
+    }
+    personal_access_token = os.environ["JIRA_PERSONAL_ACCESS_TOKEN"]
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}",
+        "Content-Type": "application/json",
+    }
+    response = requests.get(url, params, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+@mcp.tool()
 def get_page_id_confluence(space_key: str, title: str) -> str:
     """
     When to use:
