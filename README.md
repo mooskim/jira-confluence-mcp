@@ -197,3 +197,32 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
             page_id (str): The page ID of the current node.
             title (str): The title of the current node.
             children (list): The child nodes of the current node.
+
+### search_confluence
+
+    When to use:
+        Use this function to search for Confluence pages, attachments, or comments using CQL (Confluence Query Language).
+
+    Args:
+        cql (str): The CQL query string to use for searching content.
+        start (int): The start index of the result set.
+        limit (int): The maximum number of results returned.
+
+    Returns:
+        dict[str, Any]: Information about the searched Confluence contents as a dictionary, including:
+            _links (dict): Links for pagination and API context (e.g., self, next, base, context).
+            cqlQuery (str): The CQL query string used for the search.
+            limit (int): The maximum number of results returned.
+            results (list): List of matching content items, each including:
+                _expandable (dict): API paths to fetch more information for the content, such as container, children, body, version, ancestors, space, etc. May vary by type.
+                _links (dict): Various endpoint links related to the content, including webui, edit, tinyui, download, thumbnail, and self.
+                extensions (dict): Additional metadata about the content, such as position for pages, mediaType for attachments, etc.
+                id (str): The ID of the content item.
+                metadata (dict, optional): Metadata including mediaType for attachments.
+                status (str): The status of the content item.
+                title (str): The title of the content (for pages and attachments).
+                type (str): The type of the content item (e.g., page, comment, attachment).
+            searchDuration (int): The server-side time taken to process the search (in ms).
+            size (int): The number of results included in this response.
+            start (int): The start index of the result set.
+            totalSize (int): Total number of matching contents for the query.
