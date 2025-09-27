@@ -210,7 +210,7 @@ def add_tools(mcp):
     def get_page_confluence(page_id: str) -> dict[str, Any]:
         base_url = os.environ["CONFLUENCE_BASE_URL"]
         url = f"{base_url}/rest/api/content/{page_id}"
-        params = {"expand": "body.storage"}
+        params = {"expand": "body.storage,version"}
         personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
         headers = {
             "Authorization": f"Bearer {personal_access_token}",
@@ -311,5 +311,49 @@ def add_tools(mcp):
             "Content-Type": "application/json",
         }
         response = requests.get(url, params, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+    @mcp.tool()
+    def update_page_confluence(page_id: str, *, body: str = "", title: str = ""):
+        """
+        When to use:
+            Use this function to update the fields of a Confluence page.
+
+        Args:
+            page_id (str): The ID of the Confluence page to update.
+            body (str, optional): The updated body for the page. Default is an empty string.
+            title (str, optional): The updated title for the page. Default is an empty string.
+
+        Returns:
+            dict[str, Any]: Information about the updated Confluence page as a dictionary, including:
+                _expandable (dict): Related API paths for accessing additional information such as children, descendants, metadata, operations, and restrictions.
+                _links (dict): Various endpoint links related to the page, including base, collection, context, edit, self, tinyui, and webui.
+                ancestors (list): List of ancestor pages, each containing details such as id, status, title, type, extensions, _expandable, and _links.
+                body (dict): The content of the updated page, including storage representation and value.
+                container (dict): The container space to which this page belongs.
+                extensions (dict): The position of the page within its space.
+                history (dict): Information about the creation history, including createdBy, createdDate, latest, _expandable, and _links.
+                id (str): The ID of the updated page.
+                space (dict): The space to which the page belongs, including id, key, name, type, _expandable, and _links.
+                status (str): The status of the page (usually "current").
+                title (str): The title of the updated page.
+                type (str): The type of the content item (usually "page").
+                version (dict): Versioning details of the page, such as by, when, number, minorEdit, hidden, _expandable, and _links.
+        """
+        base_url = os.environ["CONFLUENCE_BASE_URL"]
+        url = f"{base_url}/rest/api/content/{page_id}"
+        personal_access_token = os.environ["CONFLUENCE_PERSONAL_ACCESS_TOKEN"]
+        headers = {
+            "Authorization": f"Bearer {personal_access_token}",
+            "Content-Type": "application/json",
+        }
+        payload = get_page_confluence(page_id)
+        payload["version"]["number"] = payload["version"]["number"] + 1
+        if body:
+            payload["body"]["storage"]["value"] = body
+        if title:
+            payload["title"] = title
+        response = requests.put(url, headers=headers, json=payload)
         response.raise_for_status()
         return response.json()

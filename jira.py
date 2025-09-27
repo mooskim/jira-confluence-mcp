@@ -230,3 +230,28 @@ def add_tools(mcp):
         response = requests.get(url, params, headers=headers)
         response.raise_for_status()
         return response.json()
+
+    @mcp.tool()
+    def update_issue_jira(issue_id_or_key: str, fields: dict[str, Any]) -> int:
+        """
+        When to use:
+            Use this function to update the fields of a Jira issue.
+
+        Args:
+            issue_id_or_key (str): The id or key of the Jira issue to update.
+            fields (dict[str, Any]): A dictionary containing the fields to update in the issue.
+
+        Returns:
+            int: The HTTP status code of the update operation.
+        """
+        base_url = os.environ["JIRA_BASE_URL"]
+        url = f"{base_url}/rest/api/2/issue/{issue_id_or_key}"
+        personal_access_token = os.environ["JIRA_PERSONAL_ACCESS_TOKEN"]
+        headers = {
+            "Authorization": f"Bearer {personal_access_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"fields": fields}
+        response = requests.put(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.status_code
