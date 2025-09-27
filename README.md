@@ -144,6 +144,32 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
             start (int): The start index of the result set.
             totalSize (int): Total number of matching contents for the query.
 
+### update_page_confluence
+
+    When to use:
+        Use this function to update the fields of a Confluence page.
+
+    Args:
+        page_id (str): The ID of the Confluence page to update.
+        body (str, optional): The updated body for the page. Default is an empty string.
+        title (str, optional): The updated title for the page. Default is an empty string.
+
+    Returns:
+        dict[str, Any]: Information about the updated Confluence page as a dictionary, including:
+            _expandable (dict): Related API paths for accessing additional information such as children, descendants, metadata, operations, and restrictions.
+            _links (dict): Various endpoint links related to the page, including base, collection, context, edit, self, tinyui, and webui.
+            ancestors (list): List of ancestor pages, each containing details such as id, status, title, type, extensions, _expandable, and _links.
+            body (dict): The content of the updated page, including storage representation and value.
+            container (dict): The container space to which this page belongs.
+            extensions (dict): The position of the page within its space.
+            history (dict): Information about the creation history, including createdBy, createdDate, latest, _expandable, and _links.
+            id (str): The ID of the updated page.
+            space (dict): The space to which the page belongs, including id, key, name, type, _expandable, and _links.
+            status (str): The status of the page (usually "current").
+            title (str): The title of the updated page.
+            type (str): The type of the content item (usually "page").
+            version (dict): Versioning details of the page, such as by, when, number, minorEdit, hidden, _expandable, and _links.
+
 ### create_issue_jira
 
     When to use:
@@ -238,3 +264,15 @@ jira-confluence-mcp is a Model Context Protocol (MCP) server that provides a sta
             maxResults (int): The maximum number of issues returned.
             startAt (int): The index of the first returned issue.
             total (int): The total number of results matching the JQL query.
+
+### update_issue_jira
+
+    When to use:
+        Use this function to update the fields of a Jira issue.
+
+    Args:
+        issue_id_or_key (str): The id or key of the Jira issue to update.
+        fields (dict[str, Any]): A dictionary containing the fields to update in the issue.
+
+    Returns:
+        int: The HTTP status code of the update operation.
